@@ -17,8 +17,8 @@ DS1307 clock; //definir um objeto da classe DS1307
 
 //portas digitais
 
-#define relay1 2
-#define relay2 7
+#define relay1 9
+#define relay2 10
 #define led_display 5
 #define buzzer 6
 #define SensorIR 3
@@ -49,6 +49,7 @@ unsigned long interval = 550;
 int DisplayBrightness(byte adjustBrightness, bool use_fit); // função do brilho do display
 int sensorLDR(bool allowSensor); // função do sensor LDR
 int DHT11sensor(byte whatValues);
+int Timer(byte zero); // contador
 
 byte relay(byte whatRelay); // função para o rele
 byte soungs(byte whatSongs); // tipos de som do buzzer
@@ -93,7 +94,8 @@ void setup() {
 
 
   // 1° >> year | 2° >> month | 3° >> day | 4° >> hours | 5° >> minutes | 6° >> seconds |7° >> dayOfWeek
-  //setCLOCK(2021,10,9,9,46,0,7);
+  //setCLOCK(2021,10,10,1,28,0,7);
+  soungs(4);
 }
 
 void setCLOCK(int year, byte month, byte day, byte hours, byte minutes, byte seconds, byte dayOfWeek){
@@ -104,7 +106,6 @@ void setCLOCK(int year, byte month, byte day, byte hours, byte minutes, byte sec
 
   clock.setTime();//write time to the RTC chip
 }
-
 
 void loop() {
 
@@ -143,10 +144,21 @@ byte soungs(byte whatSongs){
 
           case 3: // alarm
             analogWrite(buzzer,255);
-            delay(100);
+            delay(190);
             analogWrite(buzzer,55);
             delay(55);            
           break;
+
+          case 4:
+            analogWrite(buzzer, 55);
+              delay(50);
+            analogWrite(buzzer, 90);
+              delay(100);
+            analogWrite(buzzer, 55);
+              delay(50);
+            analogWrite(buzzer, 0);
+              delay(100);
+          break;          
 
       }
       analogWrite(buzzer,0);
@@ -180,61 +192,28 @@ void commands_ir() {
         soungs(1);        
         break;
 
-      case 4: // luz on
-
-        break;
-
-      case 5: // luz off
-
-        break;
-
       case 24609: // relay 1
-        soungs(2);      
-        relay(1);
-        stade1 = !stade1;
-        lcd.clear(); // limpar o lcd antes do mostrar o status do rele
-        notice = true;
-        noticeStatus = 2;
-        nextStatus = 2;
-        allowNextDisplay = true;
+        soungs(2); 
+        commands(3);
         break;
 
       case 4129: // relay 2
         soungs(2);
-        relay(2); 
-        stade2 = !stade2;
-        lcd.clear(); // limpar o lcd antes do mostrar o status do rele
-        notice = true;
-        noticeStatus = 2;
-        nextStatus = 2;
-        allowNextDisplay = true;
-        break;
-
-      case 8: // arcodicionado
-
+        commands(4);
         break;
 
       case 13857: // desativar timer
-        allowTimerRelay = !allowTimerRelay;
-        lcd.clear(); // limpar o lcd antes do mostrar o status do rele
-        notice = true;
-        noticeStatus = 5;
-        nextStatus = 5;
-        allowNextDisplay = true;
+        soungs(2);
+        commands(5);
         break;
 
       case 515552: // next
         soungs(0);        
-        allowNextDisplay = true;       
+        commands(6);      
         break;
 
       case 500768: // audio off or on
-        allowSongs = !allowSongs;
-        lcd.clear(); // limpar o lcd antes do mostrar o status do rele
-        notice = true;
-        noticeStatus = 3;
-        nextStatus = 3;
-        allowNextDisplay = true;
+        commands(7); 
         break;
 
     }
@@ -275,24 +254,46 @@ void commands(int commands) {
       }
       break;
 
-    case 3:
-
+    case 3:     
+        relay(1);
+        stade1 = !stade1;
+        lcd.clear(); // limpar o lcd antes do mostrar o status do rele
+        notice = true;
+        noticeStatus = 2;
+        nextStatus = 2;
+        allowNextDisplay = true;      
       break;
 
     case 4:
-
+        relay(2); 
+        stade2 = !stade2;
+        lcd.clear(); // limpar o lcd antes do mostrar o status do rele
+        notice = true;
+        noticeStatus = 2;
+        nextStatus = 2;
+        allowNextDisplay = true;      
       break;
 
     case 5:
-
+        allowTimerRelay = !allowTimerRelay;
+        lcd.clear(); // limpar o lcd antes do mostrar o status do rele
+        notice = true;
+        noticeStatus = 5;
+        nextStatus = 5;
+        allowNextDisplay = true;      
       break;
 
-    case 6:
-
+    case 6:        
+        allowNextDisplay = true;       
       break;
 
     case 7:
-
+        allowSongs = !allowSongs;
+        lcd.clear(); // limpar o lcd antes do mostrar o status do rele
+        notice = true;
+        noticeStatus = 3;
+        nextStatus = 3;
+        allowNextDisplay = true;      
       break;
 
     case 8:
@@ -398,15 +399,17 @@ int DHT11sensor(byte whatValues){
 
 bool timerRelay(bool remembers_the_time){
 
-  if(remembers_the_time == true){
+  if(remembers_the_time == true && stade1 == true){
      timer =  clock.hour + 2;
      soungs(3);
   }
 
 
-  if(timer == clock.minute && stade1 == true){
+  if(timer == clock.hour && stade1 == true){
     soungs(3);
-    stade1 = false;    
+    stade1 = false;
+    relay(1);    
+
     lcd.clear(); // limpar o lcd antes do mostrar o status do rele
     notice = true;
     noticeStatus = 2;
@@ -427,18 +430,16 @@ byte relay(byte whatRelay) {
     digitalWrite(relay2, stade2);
   }
 
-
-
 }
 
 String dayOfWeek(){
     
     if(clock.dayOfWeek == MON){
-      return "MONDAY";
+      return "MONDAY   ";
     }
     
     else if(clock.dayOfWeek == TUE){
-      return "TUESDAY";
+      return "TUESDAY  ";
     }
 
     else if(clock.dayOfWeek == WED){
@@ -446,22 +447,34 @@ String dayOfWeek(){
     }
 
     else if(clock.dayOfWeek == THU){
-      return "THURSDAY";
+      return "THURSDAY ";
     }
 
     else if(clock.dayOfWeek == FRI){
-      return "FRIDAY";
+      return "FRIDAY   ";
     }
 
     else if(clock.dayOfWeek == SAT){
-      return "SATURDAY";
+      return "SATURDAY ";
     }
 
     else if(clock.dayOfWeek == SUN){
-      return "SUNDAY";
+      return "SUNDAY   ";
     }    
 }
 
+int Timer(byte zero){
+  int timer = 0;
+
+  if(zero == 0){
+    timer = 0;    
+    
+  }else{
+    delay(1);    
+    return timer++;
+  }      
+
+}
 
 void Display() {
 
@@ -482,9 +495,7 @@ void Display() {
               notice = false;
             }
          }
-             
-            //Serial.println(allowNextDisplay); 
-                
+            //Serial.println(allowNextDisplay);     
       }
 
       if(nextStatus > 5){
@@ -495,55 +506,54 @@ void Display() {
 
   switch(nextStatus){
     case 0:
-//------------------------[hours]-------------------------------//    
-    clock.getTime();
-    lcd.setCursor(0,0);
+      //------------------------[hours]-------------------------------//    
+      clock.getTime();
+      lcd.setCursor(0,0);
 
-    if(clock.hour < 10){
-      lcd.print("0");            
-    }
+      if(clock.hour < 10){
+        lcd.print("0");            
+      }
 
-    lcd.print(clock.hour,DEC);
-    lcd.print(":");
+      lcd.print(clock.hour,DEC);
+      lcd.print(":");
 
-    if(clock.minute < 10){
-       lcd.print("0");       
-    }
-    
-    lcd.print(clock.minute, DEC); 
+      if(clock.minute < 10){
+        lcd.print("0");       
+      }
+      
+      lcd.print(clock.minute, DEC); 
 
-    //------------------------[date]-------------------------------//
+      //------------------------[date]-------------------------------//
 
-    lcd.setCursor(6,0);
-    
-    if(clock.month < 10){
-      lcd.print("0");      
-    }    
-    
-    lcd.print(clock.month,DEC);
-    lcd.print("/");
-    if(clock.dayOfMonth < 10){
-      lcd.print("0");
-    }    
-    lcd.print(clock.dayOfMonth,DEC);
-    lcd.print("/");
-    lcd.print(clock.year + 2000, DEC);
+      lcd.setCursor(6,0);
+      
+      if(clock.month < 10){
+        lcd.print("0");      
+      }    
+      
+      lcd.print(clock.month,DEC);
+      lcd.print("/");
+      if(clock.dayOfMonth < 10){
+        lcd.print("0");
+      }    
+      lcd.print(clock.dayOfMonth,DEC);
+      lcd.print("/");
+      lcd.print(clock.year + 2000, DEC);
 
-    //------------------------[date]-------------------------------//
-    lcd.setCursor(0,1);
-    lcd.print(dayOfWeek());
+      //------------------------[date]-------------------------------//
+      lcd.setCursor(0,1);
+      lcd.print(dayOfWeek());
 
-    //------------------------[DHT11]-------------------------------//
-    lcd.setCursor(9,1);
-    lcd.print("|");
+      //------------------------[DHT11]-------------------------------//
+      lcd.setCursor(9,1);
+      lcd.print("|");
 
-    f = DHT11sensor(3);
+      f = DHT11sensor(3);
 
-    lcd.setCursor(11, 1);
-    lcd.print(f);
-    lcd.write(B11011111);
-    lcd.print("F");
-
+      lcd.setCursor(11, 1);
+      lcd.print(f);
+      lcd.write(B11011111);
+      lcd.print("F");
     break;
 
     case 1:
@@ -589,11 +599,11 @@ void Display() {
           lcd.print("ON ");                
       }else{ lcd.print("OFF");}
 
-      lcd.setCursor(0,1);
+      /*lcd.setCursor(0,1);
       lcd.print("Alarm: ");
       if(turnOnAlarm == true){
           lcd.print("ON ");
-      }else{lcd.print("OFF");}             
+      }else{lcd.print("OFF");} */            
     break;
 
     case 4:
@@ -643,8 +653,7 @@ void Display() {
         lcd.print("-> Christmas <-"); 
     }else{
       lcd.setCursor(1,1);
-      lcd.print("today nothing");
-                      
+      lcd.print("today nothing");                  
     }    
     break;
 
